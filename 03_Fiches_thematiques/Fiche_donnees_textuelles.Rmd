@@ -110,10 +110,21 @@ La fonction `tstrsplit` du _package_ `data.table` permet de découper efficaceme
 
 ```{r}
 library(data.table)
-df <- data.table(string = c("48.853_2.35","48.8162841_2.3082668"))
-df[,c("longitude","latitude") := tstrsplit(string, "_")]
+dt <- data.table(string = c("48.853_2.35","48.8162841_2.3082668"))
+dt[,c("longitude","latitude") := data.table::tstrsplit(string, "_")]
+dt
+```
+
+La fonction `separate` du _package_ `tidyr` permet de réaliser la même tâche, avec un fonctionnement légèrement différent. Voici le même exemple que ci-dessus:
+
+```{r}
+library(tidyr)
+library(magrittr)
+df <- data.frame(string = c("48.853_2.35","48.8162841_2.3082668"))
+df <- df %>% tidyr::separate(string, into = c("longitude","latitude"), sep = "_")
 df
 ```
+
 :::
 
 ### Manipuler des motifs avec `stringr`
