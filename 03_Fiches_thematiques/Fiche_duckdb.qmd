@@ -506,10 +506,16 @@ conn_ddb %>% tbl("dates_duckdb") %>%
 
 ### Exécuter du code SQL directement
 
-`DuckDB` étant un serveur SQL à part entière, on peut interagir avec `DuckDB` directement avec des requêtes SQL. Par exemple,
+`DuckDB` étant un moteur SQL à part entière, on peut interagir avec `DuckDB` directement avec des requêtes SQL. Par exemple, en reprenant une table enregistrée précédemment avec la fonction `duckdb::duckdb_register` :
 
 ```{r}
 DBI::dbGetQuery(conn_ddb, "SELECT * FROM bpe_ens_2018_duckdb") |> head()
+```
+
+Vous pouvez bien sûr lire des fichiers `Parquet` ou `CSV` en utilisant les fonctions de duckdb :
+
+```{r}
+DBI::dbGetQuery(conn_ddb, "SELECT * FROM read_parquet('bpe_ens_2018_dataset/**/*.parquet') LIMIT 5")
 ```
 
 Par exemple, on peut créer des vues ou des tables explicitement. La fonction `dbExecute` retourne le nombre de lignes modifiées, tandis que la fonction `dbGetQuery` retourne le résultat sous la forme d'un `tibble`.
@@ -532,6 +538,38 @@ conn_ddb %>% tbl("bpe_ens_2018_view")
 ```
 
 Il est déconseillé de faire `CREATE TABLE` car cela copie les données. Les fonctions `read_parquet()` en SQL et `duckdb_register` du _package_ utilisent `CREATE VIEW` implicitement.
+
+#### Séparer vos traitements SQL en blocs
+
+Si vos requêtes deviennent trop complexes et/ou longues, vous pouvez les découper en créant des vues intermédiaires que vous réutiliserez plus tard :
+
+```{r eval=FALSE}
+dbExecute(conn_ddb, "CREATE OR REPLACE VIEW data1_nettoye AS SELECT ... FROM read_parquet('data1.parquet')")
+dbExecute(conn_ddb, "CREATE OR REPLACE VIEW data2_nettoye AS SELECT ... FROM read_parquet('data2.parquet')")
+
+dbGetQuery(conn_ddb, "SELECT * FROM data1_nettoye LEFT JOIN data2_nettoye ON data1.id = data2.id")
+```
+
+Et vous pouvez bien sûr créer des tables intermédiaires temporaires ou non à la place des vues pour éviter de les recalculer à chaque fois.
+
+#### Écrire des fichiers
+
+Vous pouvez exporter des données vers des fichiers en utilisant [`COPY ... TO ...`](https://duckdb.org/docs/sql/statements/copy.html#copy--to) :
+
+```{r, message=F}
+dbExecute(conn_ddb, "COPY (SELECT * FROM read_parquet('bpe_ens_2018_dataset/**/*.parquet')) 
+                      TO 'un_dataset_parquet' (FORMAT PARQUET, PARTITION_BY (REG), OVERWRITE_OR_IGNORE 1)")
+```
+
+Et vous pouvez également créez une vue et utiliser par la suite `dbplr::tbl` et `arrow::write_dataset` :
+
+```{r, eval=FALSE}
+dbExecute(conn_ddb, "CREATE OR REPLACE VIEW output AS ...")
+
+tbl(conn_ddb, "output") |>
+  arrow::to_arrow() |>
+  write_dataset("mon_dataset")
+```
 
 
 ### Optimisations
