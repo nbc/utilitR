@@ -504,7 +504,7 @@ conn_ddb %>% tbl("dates_duckdb") %>%
 ```
 
 
-### Exécuter du code SQL directement
+### Manipuler les données avec SQL
 
 `DuckDB` étant un moteur SQL à part entière, on peut interagir avec `DuckDB` directement avec des requêtes SQL. Par exemple, en reprenant une table enregistrée précédemment avec la fonction `duckdb::duckdb_register` :
 
